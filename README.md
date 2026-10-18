@@ -17,6 +17,7 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
     inputs:
       bump:
@@ -40,8 +41,9 @@ jobs:
       dry-run: ${{ inputs.dry-run == true }}
 ```
 
-Use the repository's default branch under `branches`. The workflow needs `contents: write` to push the tag and create
-the release.
+The file is the same in every package. `branches` lists both `main` and `master` because packages use either as the
+default branch. Releases are only made from the default branch, so listing the other one does nothing. The workflow
+needs `contents: write` to push the tag and create the release.
 
 The repository needs at least one `x.y.z` (or `vx.y.z`) tag to continue from. New tags keep the `v` prefix of the latest
 one.
