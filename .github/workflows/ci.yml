@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pyright
+      - run: uv run python -B -m unittest discover -s tests -v
+
+  # Runs the reusable workflow on this repository, which only reports what it would release.
+  dry-run:
+    name: Dry run
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      dry-run: true

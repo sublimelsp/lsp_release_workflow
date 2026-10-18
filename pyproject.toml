@@ -1,0 +1,82 @@
+[project]
+name = "lsp-release-workflow"
+version = "0"
+description = "Reusable GitHub workflow that releases LSP packages for Sublime Text"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = [
+  "pyright==1.1.414",
+  "ruff==0.17.1",
+]
+
+[tool.pyright]
+include = ["scripts", "tests"]
+extraPaths = ["scripts"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+preview = true
+select = ["ALL"]
+# Refer to https://docs.astral.sh/ruff/rules/
+ignore = [
+  "any-type",
+  "missing-copyright-notice",
+  "missing-trailing-comma",
+  "undocumented-public-module",
+  "undocumented-public-class",
+  "undocumented-public-method",
+  "undocumented-public-function",
+  "undocumented-public-package",
+  "docstring-missing-returns",
+  "docstring-missing-yields",
+  "incorrect-blank-line-before-class",
+  "multi-line-summary-first-line",
+  "no-self-use",
+  "bad-quotes-inline-string",
+  "pytest-unittest-assertion",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Command line script run by the workflow, not a package.
+"scripts/*" = [
+  "implicit-namespace-package",
+  "print",
+  # The script only runs git with fixed arguments.
+  "suspicious-subprocess-import",
+  "subprocess-without-shell-equals-true",
+  "start-process-with-partial-path",
+]
+"tests/*" = [
+  "implicit-namespace-package",
+  "suspicious-subprocess-import",
+  "subprocess-without-shell-equals-true",
+  "start-process-with-partial-path",
+  # The script directory is added to sys.path before importing it.
+  "module-import-not-at-top-of-file",
+]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.isort]
+case-sensitive = false
+force-single-line = true
+from-first = true
+no-sections = true
+order-by-type = false
+required-imports = ["from __future__ import annotations"]
+
+[tool.uv]
+package = false

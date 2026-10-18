@@ -1,0 +1,80 @@
+name: LSP release
+
+on:
+  workflow_call:
+    inputs:
+      bump:
+        description: >-
+          auto releases only when the commits since the latest release need one, and works out the version from them.
+          patch, minor or major always release, with that version bump.
+        type: string
+        default: auto
+      dry-run:
+        description: Only report the release that would be made.
+        type: boolean
+        default: false
+      messages-file:
+        description: >-
+          Package Control's messages.json, relative to the repository root. A message for a version newer than the latest
+          release sets the next version.
+        type: string
+        default: messages.json
+    outputs:
+      tag:
+        description: The tag of the new release. Empty if there was nothing to release, or on a dry run.
+        value: ${{ jobs.release.outputs.tag }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Runs for pushes in quick succession one at a time, so that each one sees the tags of the previous one.
+    concurrency:
+      group: lsp-release-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Check branch
+        if: github.ref != format('refs/heads/{0}', github.event.repository.default_branch) && !inputs.dry-run
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          echo "::error::Releases are only made from the default branch, $DEFAULT_BRANCH. Use dry-run on other branches."
+          exit 1
+
+      - name: Check out package
+        uses: actions/checkout@v7
+        with:
+          path: package
+          fetch-depth: 0
+
+      # Use the script from the same commit as this workflow, so that callers only pin one version.
+      - name: Check out release workflow
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .lsp_release_workflow
+
+      - name: Work out next version
+        id: next
+        working-directory: package
+        env:
+          BUMP: ${{ inputs.bump || 'auto' }}
+          MESSAGES_FILE: ${{ inputs.messages-file }}
+        run: python3 -B ../.lsp_release_workflow/scripts/next_version.py "$GITHUB_SHA" "$BUMP" "$MESSAGES_FILE" "$RUNNER_TEMP/notes.md"
+
+      - name: Create release
+        id: release
+        if: steps.next.outputs.tag && !inputs.dry-run
+        working-directory: package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.next.outputs.tag }}
+          NOTES_FILE: ${{ steps.next.outputs.notes-file }}
+        run: |
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES_FILE"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
